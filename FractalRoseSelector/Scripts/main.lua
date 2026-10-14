@@ -1,5 +1,5 @@
--- Fractal Rose Selector 0.1.2
-local VERSION = '0.1.2'
+-- Fractal Rose Selector 1.0.0
+local VERSION = '1.0.0'
 local BASE = '/Game/Decorators/Hazards/Seeds/'
 local paths = {
     regular = BASE .. 'Seed_FractalRose.Seed_FractalRose_C:GetPlanetIdentifier',
