@@ -1,5 +1,5 @@
--- Fractal Rose Selector 0.1.0
-local VERSION = '0.1.0'
+-- Fractal Rose Selector 0.1.1
+local VERSION = '0.1.1'
 local BASE = '/Game/Decorators/Hazards/Seeds/'
 local paths = {
     regular = BASE .. 'Seed_FractalRose.Seed_FractalRose_C:GetPlanetIdentifier',
@@ -13,12 +13,29 @@ local planets = {
 local choice, choiceValue = nil, nil
 local hooks, enumValues, errors = {}, nil, {}
 local selections = 0
+local planted = {}
 local function log(s) print('[Fractal Rose Selector] ' .. s .. '\n') end
 local function valid(a) return a and a:IsValid() end
 local function seed(a)
     if not valid(a) or a:GetFName():ToString():sub(1, 9) == 'Default__' then return false end
     local name = a:GetClass():GetFName():ToString()
     return name == 'Seed_FractalRose_C' or name == 'Seed_SuperRose_C'
+end
+local function key(a) return tostring(a:GetAddress()) .. ':' .. a:GetFullName() end
+local function preserveGrowing(a)
+    if seed(a) and a:HasAuthority() and a['SERVER Growing'] then
+        local id = key(a)
+        if not planted[id] then planted[id] = {actor=a, value=nil} end
+    end
+end
+local function preserveExisting()
+    for id, state in pairs(planted) do
+        if not valid(state.actor) then planted[id] = nil end
+    end
+    -- leave seeds that are already growing alone
+    for _, class in ipairs({'Seed_FractalRose_C', 'Seed_SuperRose_C'}) do
+        for _, a in ipairs(FindAllOf(class) or {}) do preserveGrowing(a) end
+    end
 end
 local function resolveEnum()
     if enumValues then return enumValues end
@@ -36,12 +53,23 @@ local function resolveEnum()
 end
 local function override(context)
     -- nil leaves the game's choice alone
-    if choiceValue == nil then return end
     local ok, result = pcall(function()
         local actor = context:get()
         if not seed(actor) or not actor:HasAuthority() then return nil end
+        local id = key(actor)
+        if not actor['SERVER Growing'] then
+            planted[id] = nil
+            return nil
+        end
+        local state = planted[id]
+        if state and not valid(state.actor) then state = nil; planted[id] = nil end
+        if not state then
+            state = {actor=actor, value=choiceValue}
+            planted[id] = state
+        end
+        if state.value == nil then return nil end
         selections = selections + 1
-        return choiceValue
+        return state.value
     end)
     if ok then return result end
     if not errors.callback then
@@ -69,13 +97,10 @@ local function ensureHooks()
     end
 end
 local function reset()
+    preserveExisting()
     choice, choiceValue = nil, nil
-    for kind, ids in pairs(hooks) do
-        local ok, err = pcall(UnregisterHook, paths[kind], ids[1], ids[2])
-        if ok then hooks[kind] = nil; errors[kind] = nil
-        else errors[kind] = tostring(err); log('Couldn\'t remove hook for ' .. kind .. ': ' .. tostring(err)) end
-    end
-    log('Reset. Back to normal rose selection.')
+    -- keep the hooks for seeds planted before reset
+    log('Reset. New plantings use normal selection; growing seeds keep their choice.')
 end
 local function status()
     local function state(kind)
@@ -83,14 +108,18 @@ local function status()
         if hooks[kind] then return 'attached' end
         return choice and 'waiting for seeds' or 'off'
     end
-    log(string.format('STATUS: %s; regular=%s; hybrid=%s; calls=%d.',
+    log(string.format('STATUS: %s for new plantings; regular=%s; hybrid=%s; calls=%d.',
         choice and ('forcing ' .. choice) or 'vanilla', state('regular'), state('hybrid'), selections))
 end
 -- seed classes might load later, so try again when one spawns
 RegisterBeginPlayPreHook(function(context)
-    if choiceValue == nil then return end
     local ok, err = pcall(function()
-        if seed(context:get()) then ensureHooks() end
+        local actor = context:get()
+        if seed(actor) then
+            -- already growing when loaded? keep its original choice
+            preserveGrowing(actor)
+            ensureHooks()
+        end
     end)
     if not ok then log('Couldn\'t set up seed hooks: ' .. tostring(err)) end
 end)
@@ -110,6 +139,7 @@ RegisterConsoleCommandHandler('fractalrose', function(_, parameters, output)
             elseif action == 'status' then ensureHooks(); status()
             else
                 local value = resolveEnum()[planets[action]]
+                preserveExisting()
                 choice, choiceValue = action, value
                 ensureHooks()
                 status()
