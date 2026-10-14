@@ -1,5 +1,5 @@
--- Fractal Rose Selector 0.1.1
-local VERSION = '0.1.1'
+-- Fractal Rose Selector 0.1.2
+local VERSION = '0.1.2'
 local BASE = '/Game/Decorators/Hazards/Seeds/'
 local paths = {
     regular = BASE .. 'Seed_FractalRose.Seed_FractalRose_C:GetPlanetIdentifier',
@@ -12,9 +12,11 @@ local planets = {
 }
 local choice, choiceValue = nil, nil
 local hooks, enumValues, errors = {}, nil, {}
-local selections = 0
 local planted = {}
-local function log(s) print('[Fractal Rose Selector] ' .. s .. '\n') end
+local function log(s, output)
+    if output then output:Log(s .. '\n')
+    else print('[Fractal Rose Selector] ' .. s .. '\n') end
+end
 local function valid(a) return a and a:IsValid() end
 local function seed(a)
     if not valid(a) or a:GetFName():ToString():sub(1, 9) == 'Default__' then return false end
@@ -68,7 +70,6 @@ local function override(context)
             planted[id] = state
         end
         if state.value == nil then return nil end
-        selections = selections + 1
         return state.value
     end)
     if ok then return result end
@@ -77,7 +78,7 @@ local function override(context)
         log('Couldn\'t pick a rose: ' .. tostring(result))
     end
 end
-local function ensureHooks()
+local function ensureHooks(output)
     if choiceValue == nil then return end
     for kind, path in pairs(paths) do
         if not hooks[kind] then
@@ -87,29 +88,24 @@ local function ensureHooks()
                 if ok then
                     hooks[kind] = {pre, post}
                     errors[kind] = nil
-                    log(kind .. ' hook ready.')
+                    if not output then log(kind .. ' hook ready.') end
                 elseif errors[kind] ~= tostring(pre) then
                     errors[kind] = tostring(pre)
-                    log(kind .. ' hook failed: ' .. tostring(pre))
+                    log(kind .. ' hook failed: ' .. tostring(pre), output)
                 end
             end
         end
     end
 end
-local function reset()
+local function reset(output)
     preserveExisting()
     choice, choiceValue = nil, nil
     -- keep the hooks for seeds planted before reset
-    log('Reset. New plantings use normal selection; growing seeds keep their choice.')
+    log('Reset. Growing roses keep their choice.', output)
 end
-local function status()
-    local function state(kind)
-        if errors[kind] then return 'ERROR' end
-        if hooks[kind] then return 'attached' end
-        return choice and 'waiting for seeds' or 'off'
-    end
-    log(string.format('STATUS: %s for new plantings; regular=%s; hybrid=%s; calls=%d.',
-        choice and ('forcing ' .. choice) or 'vanilla', state('regular'), state('hybrid'), selections))
+local function status(output)
+    log('Selection for new plantings: ' .. (choice and (choice:sub(1, 1):upper() .. choice:sub(2)) or 'normal') .. '.', output)
+    if errors.callback then log('A seed selection failed. Details are in UE4SS.log.', output) end
 end
 -- seed classes might load later, so try again when one spawns
 RegisterBeginPlayPreHook(function(context)
@@ -125,29 +121,30 @@ RegisterBeginPlayPreHook(function(context)
 end)
 local help = 'fractalrose <sylva|desolo|vesania|novus|calidor|glacio|atrox|chronos>\n'
     .. 'fractalrose status | fractalrose reset\n'
-    .. 'Works on both seed types. Resets when you close the game.\n'
-RegisterConsoleCommandHandler('fractalrose', function(_, parameters, output)
+    .. 'rose works too, e.g. rose calidor.\n'
+    .. 'Works on both seed types. Growing roses keep their choice.\n'
+    .. 'Resets when you close the game.\n'
+local function command(_, parameters, output)
     local action = parameters[1] and parameters[1]:lower() or 'help'
     if #parameters ~= 1 or (action ~= 'status' and action ~= 'reset' and not planets[action]) then
         output:Log(help)
         return true
     end
-    -- output is only valid during this callback
-    ExecuteInGameThread(function()
-        local ok, err = pcall(function()
-            if action == 'reset' then reset()
-            elseif action == 'status' then ensureHooks(); status()
-            else
-                local value = resolveEnum()[planets[action]]
-                preserveExisting()
-                choice, choiceValue = action, value
-                ensureHooks()
-                status()
-            end
-        end)
-        if not ok then log('Command failed: ' .. tostring(err)) end
+    -- reply here, before the console output expires
+    local ok, err = pcall(function()
+        if action == 'reset' then reset(output)
+        elseif action == 'status' then ensureHooks(output)
+        else
+            local value = resolveEnum()[planets[action]]
+            preserveExisting()
+            choice, choiceValue = action, value
+            ensureHooks(output)
+        end
+        status(output)
     end)
-    output:Log('Check the log for the result.\n')
+    if not ok then log('Command failed: ' .. tostring(err), output) end
     return true
-end)
-log('v' .. VERSION .. ' loaded. Type fractalrose for help.')
+end
+RegisterConsoleCommandHandler('fractalrose', command)
+RegisterConsoleCommandHandler('rose', command)
+log('v' .. VERSION .. ' loaded. Type fractalrose or rose for help.')
