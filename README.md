@@ -1,19 +1,22 @@
 ![Fractal Rose Selector](./img/frs-banner.png)
 
-# 🌹 Fractal Rose Selector 1.0.0 🌹
+# 🌹 Fractal Rose Selector 🌹
 
 Choose which Fractal Rose variant grows regardless of which planet you're on. Works with both fractal rose seeds and hybrid rose seeds.
 
-## Install
+Multiplayer tested.
 
-- **(RECOMMENDED)** Install with [Nexus Mods Vortex](https://www.nexusmods.com/vortex), which automatically installs required extensions for Astroneer mods.
-- Manual installation:
-    1. Download the latest [UE4SS experimental .zip file](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/experimental-latest) (scroll to the bottom under assets).
-    2. In Steam, right-click Astroneer → Manage → Browse local files. Open `Astro\Binaries\Win64`.
-    3. Extract the UE4SS .zip content into `Astro\Binaries\Win64`.
-    4. Extract the mod's zip `Fractal-Rose-Selector-#.#.#-UE4SS.zip` into `Astro\Binaries\Win64\ue4ss\Mods`.
-    5. The folder structure should look something like this: `ASTRONEER\Astro\Binaries\Win64\ue4ss\Mods\FractalRoseSelector`.
+## Installation
 
+Vortex or AstroModLoader-Classic installation recommended.
+
+[Please see detailed installation guide here.](https://yuexr.github.io/astro/mods/installation.html)
+
+UE4SS (and UE4SS ConsoleCommandsMod) required.  
+Both automatically installed through instructions above.
+
+**Multiplayer:** Server-side mod. Only the host can select the variant.
+Guest commands do not affect host selection but may create temporary visual bug on their screen; goes away after rejoining the game. It is recommended for guests to disable the mod if joining another player's world.
 
 ## Rose Variant Selection
 

@@ -1,5 +1,5 @@
--- Fractal Rose Selector 1.0.0
-local VERSION = '1.0.0'
+-- Fractal Rose Selector 1.0.1
+local VERSION = '1.0.1'
 local BASE = '/Game/Decorators/Hazards/Seeds/'
 local paths = {
     regular = BASE .. 'Seed_FractalRose.Seed_FractalRose_C:GetPlanetIdentifier',
@@ -18,6 +18,19 @@ local function log(s, output)
     else print('[Fractal Rose Selector] ' .. s .. '\n') end
 end
 local function valid(a) return a and a:IsValid() end
+local guestWarning = 'Fractal Rose Selector is a server side mod. Only the host can select the variant.\n'
+    .. 'Guest commands do not affect host selection but may create temporary visual bug.\n'
+    .. "It is recommended for guests to disable the mod if joining another player's world.\n"
+local function isHost()
+    local ok, host = pcall(function()
+        local instance = FindFirstOf('GameInstance')
+        if not valid(instance) then return nil end
+        local world = instance:GetWorld()
+        if not valid(world) then return nil end
+        return valid(world.AuthorityGameMode) or false
+    end)
+    if ok then return host end
+end
 local function seed(a)
     if not valid(a) or a:GetFName():ToString():sub(1, 9) == 'Default__' then return false end
     local name = a:GetClass():GetFName():ToString()
@@ -125,6 +138,14 @@ local help = 'fractalrose <sylva|desolo|vesania|novus|calidor|glacio|atrox|chron
     .. 'Works on both seed types. Growing roses keep their choice.\n'
     .. 'Resets when you close the game.\n'
 local function command(_, parameters, output)
+    local host = isHost()
+    if host == false then
+        output:Log(guestWarning)
+        return true
+    elseif host == nil then
+        output:Log('Load a world first, then try again.\n')
+        return true
+    end
     local action = parameters[1] and parameters[1]:lower() or 'help'
     if #parameters ~= 1 or (action ~= 'status' and action ~= 'reset' and not planets[action]) then
         output:Log(help)
@@ -145,6 +166,16 @@ local function command(_, parameters, output)
     if not ok then log('Command failed: ' .. tostring(err), output) end
     return true
 end
-RegisterConsoleCommandHandler('fractalrose', command)
-RegisterConsoleCommandHandler('rose', command)
+-- make commands case insensitive
+local function registerCases(word, prefix, index)
+    if index > #word then
+        RegisterConsoleCommandHandler(prefix, command)
+        return
+    end
+    local letter = word:sub(index, index)
+    registerCases(word, prefix .. letter, index + 1)
+    registerCases(word, prefix .. letter:upper(), index + 1)
+end
+registerCases('fractalrose', '', 1)
+registerCases('rose', '', 1)
 log('v' .. VERSION .. ' loaded. Type fractalrose or rose for help.')

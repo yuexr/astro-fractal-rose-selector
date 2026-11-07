@@ -1,0 +1,6 @@
+*.zip
+*.pak
+/test-package/
+/build/
+__pycache__/
+*.pyc

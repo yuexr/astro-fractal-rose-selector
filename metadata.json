@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "name": "Fractal Rose Selector",
+  "mod_id": "FractalRoseSelector",
+  "author": "yuexr",
+  "description": "Use `fractalrose` console commands to choose which Fractal Rose variant grows regardless of planet.",
+  "version": "1.0.1",
+  "game_build": "1.45.1.0",
+  "sync": "server",
+  "homepage": "https://yuexr.github.io/astro/mods/mod.html?id=fractal-rose-selector",
+  "enable_ue4ss": true,
+  "download": {
+    "type": "index_file",
+    "url": "https://yuexr.github.io/astro/mods/index.json"
+  }
+}
